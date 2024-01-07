@@ -5,6 +5,7 @@ struct Team
 end
 
 ID(team::Team)::String = team.ID
+
 capacity(team::Team)::Int64 = team.capacity
 
 struct Site
@@ -67,6 +68,8 @@ nb_teams(instance::Instance)::Int64 = length(instance.teams)
 function maximum_radius(instance::Instance)::Float64
     return maximum(neighborhood.radius for neighborhood in values(instance.neighborhoods))
 end
+
+capacity(instance::Instance, team_idx::Int64)::Int64 = instance.teams[team_idx].capacity
 
 maximum_capacity(instance::Instance)::Int64 = maximum(team.capacity for team in instance.teams)
 

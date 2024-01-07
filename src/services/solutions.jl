@@ -16,6 +16,7 @@ nb_rescues(assignment::Assignment)::Real = assignment.nb_rescues
 @kwdef mutable struct Metrics
     objective_value::Real = NaN
     execution_time::Real = NaN
+    expected_recourse::Real = 0
 end
 
 function str(metrics::Metrics)::String
@@ -29,12 +30,14 @@ end
 
 struct Solution
     method::Method
+    model::Model
     allocations::Vector{Allocation}
     rescues::Vector{Assignment}
     metrics::Metrics
 end
 
-JuMP.objective_value(solution::Solution)::Int64 = round(Int64, solution.metrics.objective_value)
+JuMP.objective_value(solution::Solution)::Real = solution.metrics.objective_value
+
 execution_time(solution::Solution)::Float64 = solution.metrics.execution_time
 
 function get_by_scenario(assignments::Vector{Assignment}, scenario::String)::Vector{Assignment}

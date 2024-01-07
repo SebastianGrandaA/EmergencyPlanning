@@ -10,5 +10,6 @@ docs/build/
 docs/site/
 TODOs.jl
 outputs/-/*
+outputs/historical/*
 resources/*
 .vscode/*

@@ -8,6 +8,12 @@ using CSV
 using DataFrames
 using Distributed
 using StatsBase
+using Dates: now
+using Plots
+using Statistics
+
+# env = Gurobi.Env()
+# Gurobi.setparam!(env, "OutputFlag", 0)
 
 abstract type Method end
 struct Base <: Method end
@@ -23,6 +29,7 @@ struct Callback <: Usage end
 abstract type CutType end
 struct Feasibility <: CutType end
 struct Optimality <: CutType end
+struct Integrality <: CutType end
 
 const SOLVER = MOI.OptimizerWithAttributes
 const TEAM_PREFIX = "TEAM-"
@@ -32,6 +39,8 @@ const MAX_ITERATIONS = 2 # 4
 const MAX_ITERATIONS_NO_IMPROVEMENT = floor(Int64, MAX_ITERATIONS / 2)
 const SUBPROBLEM_CONSTRAINTS = 4
 const DEFAULT_MATRIX = zeros(Int64, 1, 1)
+const MAX_SEARCH_ITERATIONS = 5
+const GAP = 0.01
 
 include("services/instances.jl")
 include("services/solutions.jl")
@@ -40,9 +49,10 @@ include("services/benchmark.jl")
 
 include("methods/Base.jl")
 
-include("methods/MasterProblem.jl")
-include("methods/SubProblem.jl")
-include("methods/LShaped.jl")
+include("methods/problems/MasterProblem.jl")
+include("methods/problems/SubProblem.jl")
+include("methods/LShapedIterative.jl")
+include("methods/LShapedCallback.jl")
 include("methods/IntegerLShaped.jl")
 
 """
@@ -50,27 +60,23 @@ include("methods/IntegerLShaped.jl")
     
 Dispatches to the correct method to solve the problem and returns the solution.
 Internal interface with the solvers. It dispatches to the solve function of the method and returns the solution.
+
+TODO model_name::Symbol de frente
 """
 function optimize(model_name::String, instance::Instance, solver::SOLVER; kwargs...)::Union{Solution, Nothing}
     key = get_key(model_name, get(kwargs, :usage, nothing))
-    method = nothing
 
     try
         method = eval(Symbol(model_name))()
-    catch err
-        error("Model $(model_name) not registered | Error: $err")
-    end
+        @info "$(key) | Instance $(instance.name) | Sites $(nb_sites(instance)) | Teams $(nb_teams(instance)) | Scenarios $(nb_scenarios(instance))"
 
-    @info "$(key) | Instance $(instance.name) | Sites $(nb_sites(instance)) | Teams $(nb_teams(instance)) | Scenarios $(nb_scenarios(instance))"
-
-    try
         return solve(method, instance, solver, values(kwargs)...)
 
     catch err
         @error "$(key) | Error while solving $(instance.name) with $(model_name) | Error: $err"
+    end
 
-        return nothing
-    end 
+    return nothing
 end
 
 """
@@ -90,12 +96,15 @@ function optimize(instance_name::String, model_name::String; kwargs...)::Union{S
     return execute(; settings...)
 end
 
+"""
+Entry-point for the optimization process.
+"""
 function execute(; kwargs...)::Union{Solution, Nothing}
     # Set solver
     verbose = get(kwargs, :verbose, false) == true ? 1 : 0
     solver = optimizer_with_attributes(
         Gurobi.Optimizer,
-        "OutputFlag" => verbose,
+        "OutputFlag" => verbose, # TODO change the log level (verbose ? debug : info)
         "TimeLimit" => kwargs[:limit],
     )
 
@@ -108,15 +117,16 @@ function execute(; kwargs...)::Union{Solution, Nothing}
     params = model_params(; kwargs...)
     solution = optimize(model_name, instance, solver; params...)
     isnothing(solution) && return nothing
-    show!(instance, solution)
 
     # Export solution
     output_path = joinpath(pwd(), "outputs")
-    # export_solution(model_name, joinpath(output_path, "$(filename)_$(model_name)"), instance, solution)
+    solution_path = joinpath(output_path, "solutions", "$(filename)_$(model_name)")
+    export_solution(solution_path, instance, solution)
 
     run_benchmark = get(kwargs, :benchmark, true)
     usage = get(kwargs, :usage, nothing)
-    run_benchmark && add!(joinpath(output_path, "benchmark.csv"), instance, solution, usage)
+    benchmark_path = joinpath(output_path, "benchmark.csv")
+    run_benchmark && add!(benchmark_path, instance, solution, usage)
 
     return solution
 end
@@ -138,11 +148,11 @@ function main()::Nothing
             default=3600
     end
 
-    _ = execute(parse_args(parser))
-
+    _ = execute(; parse_args(parser)...)
+    
     return nothing
 end
 
-export main, execute, benchmark!, test
+export main, execute, benchmark!, test, plot_summary!
 
 end # module EmergencyPlanning

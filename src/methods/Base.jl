@@ -50,7 +50,8 @@ function solve(method::Base, instance::Instance, solver::SOLVER)::Solution
     @constraint(
         model,
         rescue_capacity[s in sites, k in scenarios],
-        sum(nb_rescues[s, n, k] for n in get_neighbor_idxs(instance, s)) <= sum(instance.teams[t].capacity * is_allocated[s, t] for t in teams)
+        sum(nb_rescues[s, n, k] for n in get_neighbor_idxs(instance, s))
+        <= sum(capacity(instance, t) * is_allocated[s, t] for t in teams)
     )
 
     # Only assigned teams can rescue constraint
@@ -85,7 +86,7 @@ function Solution(
         for s in sites, t in teams
         if value(model[:is_allocated][s, t]) > 0.5
     ]
-
+    isempty(allocations) && error("No allocations found")
     assignments = Assignment[]
 
     for scenario_idx in scenarios
@@ -108,7 +109,7 @@ function Solution(
         objective_value=-objective_value(model),
         execution_time=execution_time,
     )
-    solution = Solution(method, allocations, assignments, metrics)
+    solution = Solution(method, model, allocations, assignments, metrics)
     validate(solution)
 
     return solution

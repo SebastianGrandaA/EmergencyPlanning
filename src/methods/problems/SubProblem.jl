@@ -1,4 +1,3 @@
-# TODO paralalelizar
 struct SubProblem <: ProblemType
     type::CutType # TODO eliminar -- ahora esta dentro de cut::Cut
     cut::Cut
@@ -11,6 +10,9 @@ end
     SubProblem(::Optimality)
 
 Subproblem to get the optimality cut for a given scenario
+
+TODO
+    Check that not duplicated cuts are added... in practice should only add for the optimal (x*, θ*) solution
 """
 function SubProblem(
     cut_type::Optimality,
@@ -25,7 +27,7 @@ function SubProblem(
     M = maximum_capacity(instance)
     probability = get_probability(instance, scenario)
 
-    @variable(subproblem, is_assigned[sites, sites] >= 0) # Binary is_assigned variable is relaxed to access duals -- TODO [0,1]?
+    @variable(subproblem, is_assigned[sites, sites] >= 0) # relaxed to access duals -- TODO [0,1]?
     @variable(subproblem, nb_rescues[sites, sites] >= 0)
 
     # Maximize the number of people rescued
@@ -77,15 +79,14 @@ function SubProblem(
     metrics = Metrics(
         objective_value=objective_value(subproblem),
         execution_time=execution_time,
-        # nb_rescues=sum(value.(subproblem[:nb_rescues])),
-        # nb_allocations=size(master.allocations, 1)
     )
 
     duals = dual.(subproblem[:rescue_capacity])
     
     cut = Cut(
         cut_type,
-        probability * build_cut(master, metrics.objective_value, duals, instance)
+        probability * build_cut(master, metrics.objective_value, duals, instance),
+        metrics.objective_value,
         # TODO prob aca o en objective function? Es lo mismo?
     )
 
@@ -96,6 +97,8 @@ end
     SubProblem(::Feasibility)
 
 Auxiliary subproblem to get the feasibility cut for a given scenario
+
+Logica - razon de los duales es porque toca anadir las violaciones de todas las restricciones del subproblema, y por eso se toma el dual de TODAS... pero no se si es correcto
 """
 function SubProblem(
     cut_type::Feasibility,
@@ -176,7 +179,8 @@ function SubProblem(
     duals = dual.(auxiliary[:rescue_capacity])
     cut = Cut(
         cut_type,
-        build_cut(master, metrics.objective_value, duals, instance)
+        build_cut(master, metrics.objective_value, duals, instance),
+        NaN,
     )
 
     return SubProblem(cut_type, cut, scenario, auxiliary, metrics)
@@ -184,11 +188,10 @@ end
 
 is_feasible(::Feasibility, objective_value::Real)::Bool = isapprox(objective_value, 0)
 
-function build_cut(master::MasterProblem, objective_value, duals, instance::Instance)::AffExpr
+function build_cut(master::MasterProblem, objective_value::Real, duals, instance::Instance)::AffExpr
     expression = AffExpr(objective_value)
 
     for s in 1:nb_sites(instance)
-        # TODO should not add duals from all constraints??
         expression += duals[s] * total_capacity(instance, master, s)
     end
 
