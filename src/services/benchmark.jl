@@ -1,6 +1,6 @@
 struct Summary
     statistics::DataFrame
-    plots::Plots.Plot
+    plots::Union{Plots.Plot, Nothing}
 end
 
 function benchmark!(model_names::Vector{String}, instance_names::Vector{String}, settings::Dict{String, Dict})::Nothing
@@ -67,25 +67,25 @@ function plot_summary!()::Summary
 
     @info "Statistical Summary" stats
 
-    value_plot = boxplot(
-        data,
-        :model_name,
-        :solution_value,
-        title = "Objective value distribution by model",
-        legend = false,
-        xlabel = "Model",
-        ylabel = "Objective value",
-    )
-    time_plot = boxplot(
-        data,
-        :model_name,
-        :execution_time,
-        title = "Execution time distribution by model",
-        legend = false,
-        xlabel = "Model",
-        ylabel = "Execution time",
-    )
-    p = plot(value_plot, time_plot, layout = (2, 1))
+    # value_plot = boxplot(
+    #     data,
+    #     :model_name,
+    #     :solution_value,
+    #     title = "Objective value distribution by model",
+    #     legend = false,
+    #     xlabel = "Model",
+    #     ylabel = "Objective value",
+    # )
+    # time_plot = boxplot(
+    #     data,
+    #     :model_name,
+    #     :execution_time,
+    #     title = "Execution time distribution by model",
+    #     legend = false,
+    #     xlabel = "Model",
+    #     ylabel = "Execution time",
+    # )
+    # p = plot(value_plot, time_plot, layout = (2, 1))
 
-    return Summary(stats, p)
+    return Summary(stats, nothing)
 end

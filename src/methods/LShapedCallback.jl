@@ -1,5 +1,5 @@
 """
-    solve(::LShaped, instance, solver, ::Callback)
+    solve(::LShaped)
 
 Callback version of the L-Shaped method.
 Use Gurobi Lazy Constraints Callback to add the cuts to the master problem as soon as they are found.
@@ -60,14 +60,9 @@ function solve(
     end
 
     set_attribute(master.model, MOI.LazyConstraintCallback(), add_cuts!)
-    # solve!(master)
-    # solve!(master.model)
-    optimize!(master.model)
-    @info "BORRAR" termination_status(master.model)
-    # update metrics
+    solve!(master)
     master.allocations = value.(master.model[:is_allocated]) .> 0.5
     master.rescues = value.(master.model[:θ])
-    # master.metrics.execution_time = execution_time
     master.metrics.objective_value = nb_rescues(master)
     push!(master.history, deepcopy(master.metrics))
 
@@ -91,7 +86,5 @@ Check if the subproblem solution is better than the current master solution.
 """
 function has_improved(subproblem::SubProblem, master::MasterProblem, scenario_idx::Int64)::Bool
     return true
-    # TODO debemos comparar objective_value(subproblem) con el valor del master para ese escenario?
-    # return abs(objective_value(subproblem)) > abs(master.metrics.objective_value)
 end
 
