@@ -104,6 +104,8 @@ function get_neighbor_idxs(instance::Instance, site_idx::Int64)::Vector{Int64}
 end
 
 """
+    get_probability(instance::Instance)
+    
 Scenarios with equiprobable demand
 """
 function get_probability(instance::Instance)::Vector{Float64}

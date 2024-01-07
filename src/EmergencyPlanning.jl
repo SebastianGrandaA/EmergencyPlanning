@@ -12,9 +12,6 @@ using Dates: now
 using Plots
 using Statistics
 
-# env = Gurobi.Env()
-# Gurobi.setparam!(env, "OutputFlag", 0)
-
 abstract type Method end
 struct Base <: Method end
 struct LShaped <: Method end
@@ -48,7 +45,6 @@ include("services/helpers.jl")
 include("services/benchmark.jl")
 
 include("methods/Base.jl")
-
 include("methods/problems/MasterProblem.jl")
 include("methods/problems/SubProblem.jl")
 include("methods/LShapedIterative.jl")
@@ -58,10 +54,7 @@ include("methods/IntegerLShaped.jl")
 """
     optimize(model_name, instance, solver)
     
-Dispatches to the correct method to solve the problem and returns the solution.
-Internal interface with the solvers. It dispatches to the solve function of the method and returns the solution.
-
-TODO model_name::Symbol de frente
+Dispatches to the method to solve the problem and returns the solution.
 """
 function optimize(model_name::String, instance::Instance, solver::SOLVER; kwargs...)::Union{Solution, Nothing}
     key = get_key(model_name, get(kwargs, :usage, nothing))
@@ -80,6 +73,7 @@ function optimize(model_name::String, instance::Instance, solver::SOLVER; kwargs
 end
 
 """
+    optimize(instance_name, model_name)
 
 External interface with the user, used in the benchmark.
 """
@@ -97,6 +91,8 @@ function optimize(instance_name::String, model_name::String; kwargs...)::Union{S
 end
 
 """
+    execute(; kwargs...)
+
 Entry-point for the optimization process.
 """
 function execute(; kwargs...)::Union{Solution, Nothing}
@@ -104,7 +100,7 @@ function execute(; kwargs...)::Union{Solution, Nothing}
     verbose = get(kwargs, :verbose, false) == true ? 1 : 0
     solver = optimizer_with_attributes(
         Gurobi.Optimizer,
-        "OutputFlag" => verbose, # TODO change the log level (verbose ? debug : info)
+        "OutputFlag" => verbose,
         "TimeLimit" => kwargs[:limit],
     )
 

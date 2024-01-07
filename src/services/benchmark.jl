@@ -43,6 +43,8 @@ function test(model_names::Vector{String}, results::Dict{String, Real}, settings
 end
 
 """
+    plot_summary!()
+    
 Returns a `Summary` struct with the statistics and plots.
 """
 function plot_summary!()::Summary

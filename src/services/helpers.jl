@@ -14,7 +14,6 @@ function validate(model::Model)::Nothing
 end
 
 function validate(solution::Solution)::Nothing
-    # TODO add validations
     @info "Solution is valid"
 end
 
@@ -27,7 +26,7 @@ function model_params(; kwargs...)::Dict{Symbol, Any}
     usage = get(kwargs, :usage, nothing)
 
     if !(isnothing(usage))
-        if usage == :iterative # TODO refactor to use a function
+        if usage == :iterative
             push!(params, :usage => Iterative())
         elseif usage == :callback
             push!(params, :usage => Callback())
@@ -74,7 +73,6 @@ function add!(
     solution::Solution, 
     usage::Union{Symbol, Nothing}
 )::Nothing
-    # TODO the resulting CSV has incorrect column names - small fix
     columns = ["timestamp", "instance_name", "model_name", "solution_value", "execution_time"]
     history = get_file(filename, columns)
     execution = [
@@ -118,7 +116,11 @@ function export_solution(path::String, instance::Instance, solution::Solution)::
     
     @info str(instance) metrics
 
-    # plot ?
+    # TODO plot ?
 
     return nothing
+end
+
+function is_integer(values)::Bool
+    return all(isinteger.(values))
 end

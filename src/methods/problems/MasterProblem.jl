@@ -7,22 +7,21 @@ end
 """
     MasterProblem
 
-The Master Problem (MP) consists of determing the first-stage decisions (`allocations`) and ...
-    [Implementation] it stores the second-stage decisions (`rescues`) determined in the SubProblems (SP). Initially, the set of `rescues` is empty.
+Master problem to determine the team locations.
 """
 mutable struct MasterProblem <: ProblemType
     model::Model
-    allocations::Matrix{Int64} # = DEFAULT_MATRIX
-    rescues#:: # = DEFAULT_MATRIX
-    metrics::Metrics # = Metrics()
+    allocations::Matrix{Int64}
+    rescues::Vector{Float64}
+    metrics::Metrics
     history::Vector{Metrics}
-    cuts::Vector{Vector{Cut}} # [feasibility, optimality] per scenario
+    cuts::Vector{Vector{Cut}}
 end
 
 """
-Builds the initial MasterProblem without solving it.
+    MasterProblem(solver, instance)
 
-Linear relaxation of the binary allocation variables.
+Formulation of the master problem.
 """
 function MasterProblem(solver::SOLVER, instance::Instance)
     master = Model(solver)
@@ -31,7 +30,7 @@ function MasterProblem(solver::SOLVER, instance::Instance)
     teams = 1:nb_teams(instance)
     scenarios = 1:nb_scenarios(instance)
 
-    @variable(master, is_allocated[sites, teams], Bin)
+    @variable(master, is_allocated[sites, teams], Bin) # team allocation
     @variable(master, θ[scenarios] >= 0) # 2nd-stage nb of rescues
 
     # Maximize the expected number of people rescued in all scenarios (Min negative)
@@ -54,14 +53,13 @@ function MasterProblem(solver::SOLVER, instance::Instance)
         sum(instance.teams[t].cost * is_allocated[s, t] for s in sites, t in teams) <= instance.budget
     )
 
-    return MasterProblem(master, DEFAULT_MATRIX, [], Metrics(), [], []) # TODO no son kwdef?
+    return MasterProblem(master, DEFAULT_MATRIX, [], Metrics(), [], [])
 end
 
 """
-Solve master problem and update the allocations.
+    solve(::MasterProblem)
 
-For LShaped iterative exclusively.
-TODO hacer mutable o que devuelva un nuevo master?
+Solves master problem and update the allocations. Exclusively for LShaped iterative exclusively.
 """
 function solve!(master::MasterProblem)::Nothing
     execution_time = @elapsed solve!(master.model)
@@ -83,14 +81,11 @@ function solve!(master::MasterProblem)::Nothing
     return nothing
 end
 
-nb_allocations(master::MasterProblem)::Real = sum(master.allocations)
-
-nb_rescues(master::MasterProblem)::Real = sum(master.rescues)
-
-expected_recourse(master::MasterProblem)::Real = master.metrics.expected_recourse
-
 """
-Check if the difference between the objective value of the master problem and the expected recourse (estimated from the subproblems) falls below a certain threshold
+    has_converged(::MasterProblem)
+
+Check if the difference between the objective value of the master problem
+and the expected recourse (estimated from the subproblems) falls below a certain threshold.
 """
 function has_converged(master::MasterProblem)::Bool
     Δ = objective_value(master) - expected_recourse(master)
@@ -99,6 +94,8 @@ function has_converged(master::MasterProblem)::Bool
 end
 
 """
+    register_cuts!(::MasterProblem)
+
 Find new cuts for each scenario in parallel and register them in the master problem.
 """
 function register_cuts!(master::MasterProblem, instance::Instance, solver::SOLVER)
@@ -134,3 +131,9 @@ function register_cuts!(master::MasterProblem, instance::Instance, solver::SOLVE
     
     return nothing
 end
+
+nb_allocations(master::MasterProblem)::Real = sum(master.allocations)
+
+nb_rescues(master::MasterProblem)::Real = sum(master.rescues)
+
+expected_recourse(master::MasterProblem)::Real = master.metrics.expected_recourse

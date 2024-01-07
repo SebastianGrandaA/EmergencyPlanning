@@ -2,7 +2,7 @@ function solve(method::Base, instance::Instance, solver::SOLVER)::Solution
     model = Model(solver)
 
     sites = 1:nb_sites(instance)
-    scenarios = 1:nb_scenarios(instance) # k index
+    scenarios = 1:nb_scenarios(instance)
     teams = 1:nb_teams(instance)
     M = maximum_capacity(instance)
 

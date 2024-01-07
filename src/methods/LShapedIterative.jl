@@ -3,11 +3,6 @@
 
 Iterative version of the L-Shaped method in which the subproblems are solved in parallel for each scenario.
 The cuts are added to the master problem in the same batch after all subproblems are solved.
-
-TODO!! Importante: actualmente se estanca en la segunda iteracion... facil que porque ya se agregan todos los cuts (todos los escenarios). El chiste es entonces agregar uno por uno y resolver el master?
-
-TODO IMPORTANTE!!!!
-    Creo que no deberiamos redondear... las variables y el objetivo... probar con integer l shaped
 """
 function solve(
     method::LShaped,
@@ -65,7 +60,6 @@ function Solution(
 
             push!(assignments, Assignment(scenario_id, first(allocation), nb_rescues))
         end
-        # TODO introduce site-dissagregation by passing the subproblem
     end
 
     metrics = Metrics(
@@ -81,12 +75,9 @@ end
 """
     should_continue(::LShaped, iteration, master)
 
-Stop criteria based on:
-    * Convergence
-    * Maximum number of iterations
-    * Maximum number of iterations without improvement
-
-TODO implement ideas from tabu search / simmulated annealing?
+The stop criteria for the iterative L-shaped method is based on the converage,
+which is the difference between the objective value of the master problem and the expected recourse,
+the maximum number of iterations and the maximum number of iterations without improvement.
 """
 function should_continue(::LShaped, iteration::Int64, master::MasterProblem)::Bool
     iteration > MAX_ITERATIONS && return false

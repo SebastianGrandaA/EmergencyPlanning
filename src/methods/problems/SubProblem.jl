@@ -1,5 +1,5 @@
 struct SubProblem <: ProblemType
-    type::CutType # TODO eliminar -- ahora esta dentro de cut::Cut
+    type::CutType # TODO eliminar -- ahora en ::Cut
     cut::Cut
     scenario::Int64
     model::Model
@@ -10,9 +10,6 @@ end
     SubProblem(::Optimality)
 
 Subproblem to get the optimality cut for a given scenario
-
-TODO
-    Check that not duplicated cuts are added... in practice should only add for the optimal (x*, θ*) solution
 """
 function SubProblem(
     cut_type::Optimality,
@@ -27,7 +24,7 @@ function SubProblem(
     M = maximum_capacity(instance)
     probability = get_probability(instance, scenario)
 
-    @variable(subproblem, is_assigned[sites, sites] >= 0) # relaxed to access duals -- TODO [0,1]?
+    @variable(subproblem, is_assigned[sites, sites] >= 0) # relaxed to access duals
     @variable(subproblem, nb_rescues[sites, sites] >= 0)
 
     # Maximize the number of people rescued
@@ -87,7 +84,6 @@ function SubProblem(
         cut_type,
         probability * build_cut(master, metrics.objective_value, duals, instance),
         metrics.objective_value,
-        # TODO prob aca o en objective function? Es lo mismo?
     )
 
     return SubProblem(cut_type, cut, scenario, subproblem, metrics)
@@ -97,8 +93,6 @@ end
     SubProblem(::Feasibility)
 
 Auxiliary subproblem to get the feasibility cut for a given scenario
-
-Logica - razon de los duales es porque toca anadir las violaciones de todas las restricciones del subproblema, y por eso se toma el dual de TODAS... pero no se si es correcto
 """
 function SubProblem(
     cut_type::Feasibility,
@@ -113,13 +107,12 @@ function SubProblem(
     constraints = 1:SUBPROBLEM_CONSTRAINTS
     M = maximum_capacity(instance)
 
-    @variable(auxiliary, is_assigned[sites, sites] >= 0) # Binary is_assigned variable is relaxed to access duals -- TODO [0,1]?
+    @variable(auxiliary, is_assigned[sites, sites] >= 0) # relaxed to access duals
     @variable(auxiliary, nb_rescues[sites, sites] >= 0)
 
     # Auxiliary
     @variable(auxiliary, deficit[sites, constraints] >= 0)
     @variable(auxiliary, surplus[sites, constraints] >= 0)
-
 
     # Objective function: minimize the sum of deficit and surplus
     @objective(
